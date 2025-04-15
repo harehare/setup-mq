@@ -1,0 +1,21 @@
+name: Test setup-mq action
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm run package
+      - run: uname -a
+      - name: Test setup-mq action
+        uses: ./
+        with:
+          version: "latest"
+      - name: Verify mq installation
+        run: |
+          mq --version
+          echo "# Test" | mq '.h'
