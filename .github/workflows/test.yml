@@ -8,9 +8,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci
-      - run: npm run package
-      - run: uname -a
       - name: Test setup-mq action
         uses: ./
         with:
