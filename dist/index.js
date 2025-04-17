@@ -33408,7 +33408,7 @@ async function run() {
 }
 async function getRelease(token, owner, repo, platform, version) {
     const octokit = githubExports.getOctokit(token);
-    if (!version || version === "latest") {
+    if (!version || version === "*" || version === "latest") {
         coreExports.info(`No specific version provided. Fetching latest release for ${REPO}`);
         const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
             owner: OWNER,

@@ -100,7 +100,7 @@ async function getRelease(
 ): Promise<Release> {
   const octokit = github.getOctokit(token);
 
-  if (!version || version === "latest") {
+  if (!version || version === "*" || version === "latest") {
     core.info(
       `No specific version provided. Fetching latest release for ${REPO}`
     );
