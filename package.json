@@ -5,7 +5,7 @@
   "author": "harehare",
   "type": "module",
   "private": true,
-  "homepage": "https://harehare.github.io/mq/",
+  "homepage": "https://mqlang.org/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/harehare/setup-mq.git"
