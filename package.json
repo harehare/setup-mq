@@ -57,7 +57,7 @@
     "rollup": "^4.44.2",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
-    "xo": "^1.1.1"
+    "xo": "^1.2.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "*"
