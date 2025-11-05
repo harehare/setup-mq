@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@eslint/compat": "^1.4.0",
-    "@rollup/plugin-commonjs": "^28.0.9",
+    "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.2.0",
     "@types/node": "^24.10.0",
