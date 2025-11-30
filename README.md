@@ -11,7 +11,7 @@ steps:
   - name: Setup mq
     uses: harehare/setup-mq@v1
     with:
-      version: "v0.1.0" # Optional: defaults to latest
+      version: 'v0.1.0' # Optional: defaults to latest
   - name: Run mq
     run: echo "# Test" | mq '.h'
 ```
