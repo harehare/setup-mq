@@ -11,7 +11,7 @@ jobs:
       - name: Test setup-mq action
         uses: ./
         with:
-          version: "latest"
+          version: 'latest'
       - name: Verify mq installation
         run: |
           mq --version
