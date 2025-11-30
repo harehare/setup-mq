@@ -9,9 +9,9 @@ const config = {
     file: 'dist/index.js',
     format: 'es',
     sourcemap: false,
-    compact: true
+    compact: true,
   },
-  plugins: [typescript(), nodeResolve({ preferBuiltins: true }), commonjs()]
+  plugins: [typescript(), nodeResolve({ preferBuiltins: true }), commonjs()],
 };
 
 export default config;
