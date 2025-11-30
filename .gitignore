@@ -41,3 +41,5 @@ web_modules/
 .cache/
 .temp
 .cache
+
+settings.local.json
