@@ -1,7 +1,7 @@
 {
   "name": "setup-mq",
   "description": "This GitHub Action will setup mq in your GitHub Actions workflow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "harehare",
   "type": "module",
   "private": true,
