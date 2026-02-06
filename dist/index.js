@@ -1,4 +1,4 @@
-import process$1 from'node:process';import*as path from'node:path';import {promises}from'node:fs';import require$$0 from'os';import require$$0$1 from'crypto';import require$$1 from'fs';import require$$1$5 from'path';import require$$2$1 from'http';import require$$3$1 from'https';import require$$0$4 from'net';import require$$1$1 from'tls';import require$$4$1 from'events';import require$$0$3 from'assert';import require$$0$2 from'util';import require$$0$5 from'stream';import require$$7 from'buffer';import require$$8 from'querystring';import require$$14 from'stream/web';import require$$0$7 from'node:stream';import require$$1$2 from'node:util';import require$$0$6 from'node:events';import require$$0$8 from'worker_threads';import require$$2$2 from'perf_hooks';import require$$5 from'util/types';import require$$4$2 from'async_hooks';import require$$1$3 from'console';import require$$1$4 from'url';import require$$3$2 from'zlib';import require$$6 from'string_decoder';import require$$0$9 from'diagnostics_channel';import require$$2$3 from'child_process';import require$$6$1 from'timers';var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+import process$1 from'node:process';import*as os from'node:os';import*as path from'node:path';import {promises}from'node:fs';import require$$0 from'os';import require$$0$1 from'crypto';import require$$1 from'fs';import require$$1$5 from'path';import require$$2$1 from'http';import require$$3$1 from'https';import require$$0$4 from'net';import require$$1$1 from'tls';import require$$4$1 from'events';import require$$0$3 from'assert';import require$$0$2 from'util';import require$$0$5 from'stream';import require$$7 from'buffer';import require$$8 from'querystring';import require$$14 from'stream/web';import require$$0$7 from'node:stream';import require$$1$2 from'node:util';import require$$0$6 from'node:events';import require$$0$8 from'worker_threads';import require$$2$2 from'perf_hooks';import require$$5 from'util/types';import require$$4$2 from'async_hooks';import require$$1$3 from'console';import require$$1$4 from'url';import require$$3$2 from'zlib';import require$$6 from'string_decoder';import require$$0$9 from'diagnostics_channel';import require$$2$3 from'child_process';import require$$6$1 from'timers';var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function getDefaultExportFromCjs (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
@@ -33358,6 +33358,7 @@ function requireToolCache () {
 }var toolCacheExports = requireToolCache();const TOOL_NAME = 'mq';
 const OWNER = 'harehare';
 const REPO = 'mq';
+const MQ_BIN_DIR = path.join(os.homedir(), '.mq', 'bin');
 const PLATFORM_MAP = {
     darwin_x64: 'x86_64-apple-darwin',
     darwin_arm64: 'aarch64-apple-darwin',
@@ -33379,27 +33380,21 @@ async function run() {
         }
         const version = coreExports.getInput('version');
         const token = coreExports.getInput('github-token');
-        const release = await getRelease(token, `${platform}_${arch}`, version);
-        if (!release.url || !release.version) {
-            coreExports.info(`Not Found ${TOOL_NAME} version ${version} for ${platform}-${arch}`);
-            return;
-        }
-        let toolPath = toolCacheExports.find(TOOL_NAME, release.version, arch);
-        const isAct = process$1.env.ACT === 'true';
-        if (!toolPath) {
-            const downloadPath = await toolCacheExports.downloadTool(release.url);
-            const mqPath = path.join(path.dirname(downloadPath), 'mq');
-            await promises.copyFile(downloadPath, mqPath);
-            await promises.chmod(mqPath, '755');
-            if (isAct) {
-                toolPath = path.dirname(downloadPath);
-            }
-            else {
-                toolPath = await toolCacheExports.cacheDir(path.dirname(downloadPath), TOOL_NAME, release.version, arch);
+        const binsInput = coreExports.getInput('bins');
+        // Setup main mq tool
+        await setupMq(token, platform, arch, version);
+        // Setup additional bins from mq-XXX repositories
+        if (binsInput) {
+            const bins = binsInput
+                .split(',')
+                .map((b) => b.trim())
+                .filter((b) => b.length > 0);
+            if (bins.length > 0) {
+                await promises.mkdir(MQ_BIN_DIR, { recursive: true });
+                coreExports.addPath(MQ_BIN_DIR);
+                await Promise.all(bins.map(async (bin) => setupAdditionalBin(token, platform, arch, bin)));
             }
         }
-        coreExports.addPath(toolPath);
-        coreExports.info(`Setting up ${TOOL_NAME} version ${version} for ${platform}-${arch}`);
     }
     catch (error) {
         console.log('error', error);
@@ -33411,44 +33406,92 @@ async function run() {
         }
     }
 }
-async function getRelease(token, platform, version) {
+async function setupMq(token, platform, arch, version) {
+    const release = await getRelease({
+        token,
+        repo: REPO,
+        toolName: TOOL_NAME,
+        platform: `${platform}_${arch}`,
+        version,
+    });
+    if (!release.url || !release.version) {
+        coreExports.info(`Not Found ${TOOL_NAME} version ${version} for ${platform}-${arch}`);
+        return;
+    }
+    let toolPath = toolCacheExports.find(TOOL_NAME, release.version, arch);
+    const isAct = process$1.env.ACT === 'true';
+    if (!toolPath) {
+        const downloadPath = await toolCacheExports.downloadTool(release.url);
+        const mqPath = path.join(path.dirname(downloadPath), 'mq');
+        await promises.copyFile(downloadPath, mqPath);
+        await promises.chmod(mqPath, '755');
+        if (isAct) {
+            toolPath = path.dirname(downloadPath);
+        }
+        else {
+            toolPath = await toolCacheExports.cacheDir(path.dirname(downloadPath), TOOL_NAME, release.version, arch);
+        }
+    }
+    coreExports.addPath(toolPath);
+    coreExports.info(`Setting up ${TOOL_NAME} version ${version} for ${platform}-${arch}`);
+}
+async function setupAdditionalBin(token, platform, arch, bin) {
+    const repo = `mq-${bin}`;
+    const release = await getRelease({
+        token,
+        repo,
+        toolName: bin,
+        platform: `${platform}_${arch}`,
+    });
+    if (!release.url || !release.version) {
+        coreExports.warning(`Not Found ${bin} for ${platform}-${arch} in ${repo}`);
+        return;
+    }
+    const downloadPath = await toolCacheExports.downloadTool(release.url);
+    const binPath = path.join(MQ_BIN_DIR, bin);
+    await promises.copyFile(downloadPath, binPath);
+    await promises.chmod(binPath, '755');
+    coreExports.info(`Setting up ${bin} version ${release.version} from ${repo}`);
+}
+async function getRelease(options) {
+    const { token, repo, toolName, platform, version } = options;
     const octokit = githubExports.getOctokit(token);
     if (!version || version === '*' || version === 'latest') {
-        coreExports.info(`No specific version provided. Fetching latest release for ${REPO}`);
+        coreExports.info(`No specific version provided. Fetching latest release for ${repo}`);
         const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
             owner: OWNER,
-            repo: REPO,
+            repo,
         });
         coreExports.info(`Latest release is ${latestReleaseResponse.data.tag_name}`);
         return {
             version: latestReleaseResponse.data.tag_name,
-            url: latestReleaseResponse.data.assets.find((asset) => asset.name === `mq-${PLATFORM_MAP[platform]}`)?.browser_download_url,
+            url: latestReleaseResponse.data.assets.find((asset) => asset.name === `${toolName}-${PLATFORM_MAP[platform]}`)?.browser_download_url,
         };
     }
     const tagVersion = version.startsWith('v') ? version : `v${version}`;
     const versionWithoutV = version.startsWith('v') ? version.slice(1) : version;
-    coreExports.info(`Fetching release information for ${REPO} ${version}`);
+    coreExports.info(`Fetching release information for ${repo} ${version}`);
     try {
         const releaseResponse = await octokit.rest.repos.getReleaseByTag({
             owner: OWNER,
-            repo: REPO,
+            repo,
             tag: tagVersion,
         });
         return {
             version: releaseResponse.data.tag_name,
-            url: releaseResponse.data.assets.find((asset) => asset.name === `mq-${PLATFORM_MAP[platform]}`)?.browser_download_url,
+            url: releaseResponse.data.assets.find((asset) => asset.name === `${toolName}-${PLATFORM_MAP[platform]}`)?.browser_download_url,
         };
     }
     catch {
         try {
             const releaseResponse = await octokit.rest.repos.getReleaseByTag({
                 owner: OWNER,
-                repo: REPO,
+                repo,
                 tag: versionWithoutV,
             });
             return {
                 version: releaseResponse.data.tag_name,
-                url: releaseResponse.data.assets.find((asset) => asset.name === `mq-${PLATFORM_MAP[platform]}`)?.browser_download_url,
+                url: releaseResponse.data.assets.find((asset) => asset.name === `${toolName}-${PLATFORM_MAP[platform]}`)?.browser_download_url,
             };
         }
         catch (error) {

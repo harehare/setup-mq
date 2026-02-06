@@ -12,6 +12,10 @@ inputs:
   github-token:
     required: false
     default: ${{ github.token }}
+  bins:
+    required: false
+    default: ''
+    description: 'Comma-separated list of additional binaries to install from mq-XXX repositories (e.g., "foo,bar" will install from mq-foo and mq-bar).'
 runs:
   using: node20
   main: dist/index.js
