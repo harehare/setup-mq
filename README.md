@@ -16,11 +16,28 @@ steps:
     run: echo "# Test" | mq '.h'
 ```
 
+### With additional binaries
+
+You can install additional binaries from `mq-XXX` repositories using the `bins` option.
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - name: Setup mq
+    uses: harehare/setup-mq@v1
+    with:
+      version: 'v0.1.0'
+      bins: 'foo,bar' # Installs binaries from mq-foo and mq-bar repositories
+  - name: Run mq
+    run: echo "# Test" | mq '.h'
+```
+
 ## Inputs
 
-| Name      | Description           | Required | Default        |
-| --------- | --------------------- | -------- | -------------- |
-| `version` | mq version to install | No       | Latest version |
+| Name      | Description                                                                  | Required | Default        |
+| --------- | ---------------------------------------------------------------------------- | -------- | -------------- |
+| `version` | mq version to install                                                        | No       | Latest version |
+| `bins`    | Comma-separated list of additional binaries to install from `mq-XXX` repositories | No       | `''`           |
 
 ## License
 
