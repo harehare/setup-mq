@@ -143,7 +143,7 @@ async function setupAdditionalBin(
   const release = await getRelease({
     token,
     repo,
-    toolName: bin,
+    toolName: bin.startsWith('mq-') ? bin : `mq-${bin}`,
     platform: `${platform}_${arch}` as Platform,
   });
 

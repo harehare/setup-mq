@@ -53,12 +53,12 @@ vi.mock('@actions/tool-cache', () => ({
       return 'v0.1.0_tool/mq';
     }
 
-    if (url === 'bin_foo_url/foo') {
-      return 'bin_foo_tool/foo';
+    if (url === 'bin_foo_url/mq-foo') {
+      return 'bin_foo_tool/mq-foo';
     }
 
-    if (url === 'bin_bar_url/bar') {
-      return 'bin_bar_tool/bar';
+    if (url === 'bin_bar_url/mq-bar') {
+      return 'bin_bar_tool/mq-bar';
     }
 
     return '';
@@ -93,8 +93,8 @@ vi.mock('@actions/github', () => ({
             tag_name: 'v1.0.0',
             assets: [
               {
-                browser_download_url: 'bin_foo_url/foo',
-                name: 'foo-x86_64-unknown-linux-gnu',
+                browser_download_url: 'bin_foo_url/mq-foo',
+                name: 'mq-foo-x86_64-unknown-linux-gnu',
               },
             ],
           },
@@ -107,8 +107,8 @@ vi.mock('@actions/github', () => ({
             tag_name: 'v2.0.0',
             assets: [
               {
-                browser_download_url: 'bin_bar_url/bar',
-                name: 'bar-x86_64-unknown-linux-gnu',
+                browser_download_url: 'bin_bar_url/mq-bar',
+                name: 'mq-bar-x86_64-unknown-linux-gnu',
               },
             ],
           },
@@ -227,8 +227,8 @@ describe('GitHub Action', () => {
     expect(core.addPath).toHaveBeenCalledWith('latest_tool');
 
     // Verify additional bins were downloaded
-    expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/foo');
-    expect(tc.downloadTool).toHaveBeenCalledWith('bin_bar_url/bar');
+    expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/mq-foo');
+    expect(tc.downloadTool).toHaveBeenCalledWith('bin_bar_url/mq-bar');
 
     // Verify info messages for additional bins
     expect(core.info).toHaveBeenCalledWith(
@@ -259,8 +259,8 @@ describe('GitHub Action', () => {
     await run();
 
     // Verify additional bins were downloaded despite whitespace
-    expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/foo');
-    expect(tc.downloadTool).toHaveBeenCalledWith('bin_bar_url/bar');
+    expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/mq-foo');
+    expect(tc.downloadTool).toHaveBeenCalledWith('bin_bar_url/mq-bar');
   });
 
   it('should setup a single bin', async () => {
@@ -282,7 +282,7 @@ describe('GitHub Action', () => {
 
     await run();
 
-    expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/foo');
+    expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/mq-foo');
     expect(core.info).toHaveBeenCalledWith(
       expect.stringContaining('foo'),
     );
