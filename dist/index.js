@@ -33437,14 +33437,15 @@ async function setupMq(token, platform, arch, version) {
 }
 async function setupAdditionalBin(token, platform, arch, bin) {
     const repo = `mq-${bin}`;
+    const toolName = bin.startsWith('mq-') ? bin : `mq-${bin}`;
     const release = await getRelease({
         token,
         repo,
-        toolName: bin,
+        toolName,
         platform: `${platform}_${arch}`,
     });
     if (!release.url || !release.version) {
-        coreExports.warning(`Not Found ${bin} for ${platform}-${arch} in ${repo}`);
+        coreExports.warning(`Not Found ${toolName} for ${platform}-${arch} in ${repo}`);
         return;
     }
     const downloadPath = await toolCacheExports.downloadTool(release.url);
@@ -33463,9 +33464,12 @@ async function getRelease(options) {
             repo,
         });
         coreExports.info(`Latest release is ${latestReleaseResponse.data.tag_name}`);
+        const assetName = `${toolName}-${PLATFORM_MAP[platform]}`;
+        coreExports.info(`Looking for asset: ${assetName}`);
+        coreExports.info(`Available assets: ${latestReleaseResponse.data.assets.map((a) => a.name).join(', ')}`);
         return {
             version: latestReleaseResponse.data.tag_name,
-            url: latestReleaseResponse.data.assets.find((asset) => asset.name === `${toolName}-${PLATFORM_MAP[platform]}`)?.browser_download_url,
+            url: latestReleaseResponse.data.assets.find((asset) => asset.name === assetName)?.browser_download_url,
         };
     }
     const tagVersion = version.startsWith('v') ? version : `v${version}`;
@@ -33477,9 +33481,11 @@ async function getRelease(options) {
             repo,
             tag: tagVersion,
         });
+        const assetName = `${toolName}-${PLATFORM_MAP[platform]}`;
+        coreExports.info(`Looking for asset: ${assetName}`);
         return {
             version: releaseResponse.data.tag_name,
-            url: releaseResponse.data.assets.find((asset) => asset.name === `${toolName}-${PLATFORM_MAP[platform]}`)?.browser_download_url,
+            url: releaseResponse.data.assets.find((asset) => asset.name === assetName)?.browser_download_url,
         };
     }
     catch {
@@ -33489,9 +33495,11 @@ async function getRelease(options) {
                 repo,
                 tag: versionWithoutV,
             });
+            const assetName = `${toolName}-${PLATFORM_MAP[platform]}`;
+            coreExports.info(`Looking for asset: ${assetName}`);
             return {
                 version: releaseResponse.data.tag_name,
-                url: releaseResponse.data.assets.find((asset) => asset.name === `${toolName}-${PLATFORM_MAP[platform]}`)?.browser_download_url,
+                url: releaseResponse.data.assets.find((asset) => asset.name === assetName)?.browser_download_url,
             };
         }
         catch (error) {

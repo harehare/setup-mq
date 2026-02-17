@@ -140,15 +140,16 @@ async function setupAdditionalBin(
   bin: string,
 ): Promise<void> {
   const repo = `mq-${bin}`;
+  const toolName = bin.startsWith('mq-') ? bin : `mq-${bin}`;
   const release = await getRelease({
     token,
     repo,
-    toolName: bin.startsWith('mq-') ? bin : `mq-${bin}`,
+    toolName,
     platform: `${platform}_${arch}` as Platform,
   });
 
   if (!release.url || !release.version) {
-    core.warning(`Not Found ${bin} for ${platform}-${arch} in ${repo}`);
+    core.warning(`Not Found ${toolName} for ${platform}-${arch} in ${repo}`);
     return;
   }
 
@@ -177,11 +178,15 @@ async function getRelease(options: GetReleaseOptions): Promise<Release> {
 
     core.info(`Latest release is ${latestReleaseResponse.data.tag_name}`);
 
+    const assetName = `${toolName}-${PLATFORM_MAP[platform]}`;
+    core.info(`Looking for asset: ${assetName}`);
+    core.info(`Available assets: ${latestReleaseResponse.data.assets.map((a: any) => a.name).join(', ')}`);
+
     return {
       version: latestReleaseResponse.data.tag_name,
       url: latestReleaseResponse.data.assets.find(
         (asset: { name: string; browser_download_url: string }) =>
-          asset.name === `${toolName}-${PLATFORM_MAP[platform]}`,
+          asset.name === assetName,
       )?.browser_download_url,
     };
   }
@@ -198,11 +203,14 @@ async function getRelease(options: GetReleaseOptions): Promise<Release> {
       tag: tagVersion,
     });
 
+    const assetName = `${toolName}-${PLATFORM_MAP[platform]}`;
+    core.info(`Looking for asset: ${assetName}`);
+
     return {
       version: releaseResponse.data.tag_name,
       url: releaseResponse.data.assets.find(
         (asset: { name: string; browser_download_url: string }) =>
-          asset.name === `${toolName}-${PLATFORM_MAP[platform]}`,
+          asset.name === assetName,
       )?.browser_download_url,
     };
   } catch {
@@ -213,11 +221,14 @@ async function getRelease(options: GetReleaseOptions): Promise<Release> {
         tag: versionWithoutV,
       });
 
+      const assetName = `${toolName}-${PLATFORM_MAP[platform]}`;
+      core.info(`Looking for asset: ${assetName}`);
+
       return {
         version: releaseResponse.data.tag_name,
         url: releaseResponse.data.assets.find(
           (asset: { name: string; browser_download_url: string }) =>
-            asset.name === `${toolName}-${PLATFORM_MAP[platform]}`,
+            asset.name === assetName,
         )?.browser_download_url,
       };
     } catch (error) {
