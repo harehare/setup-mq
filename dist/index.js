@@ -33449,10 +33449,10 @@ async function setupAdditionalBin(token, platform, arch, bin) {
         return;
     }
     const downloadPath = await toolCacheExports.downloadTool(release.url);
-    const binPath = path.join(MQ_BIN_DIR, bin);
+    const binPath = path.join(MQ_BIN_DIR, toolName);
     await promises.copyFile(downloadPath, binPath);
     await promises.chmod(binPath, '755');
-    coreExports.info(`Setting up ${bin} version ${release.version} from ${repo}`);
+    coreExports.info(`Setting up ${toolName} version ${release.version} from ${repo}`);
 }
 async function getRelease(options) {
     const { token, repo, toolName, platform, version } = options;
