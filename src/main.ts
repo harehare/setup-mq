@@ -154,12 +154,12 @@ async function setupAdditionalBin(
   }
 
   const downloadPath = await tc.downloadTool(release.url);
-  const binPath = path.join(MQ_BIN_DIR, bin);
+  const binPath = path.join(MQ_BIN_DIR, toolName);
 
   await fs.copyFile(downloadPath, binPath);
   await fs.chmod(binPath, '755');
 
-  core.info(`Setting up ${bin} version ${release.version} from ${repo}`);
+  core.info(`Setting up ${toolName} version ${release.version} from ${repo}`);
 }
 
 async function getRelease(options: GetReleaseOptions): Promise<Release> {
