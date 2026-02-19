@@ -1,0 +1,7 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/crates/oxc_linter/src/options/oxlintrc.schema.json",
+  "rules": {
+    "typescript/naming-convention": "off"
+  },
+  "ignorePatterns": ["rollup.config.ts", "vitest.config.ts", "__tests__/**"]
+}

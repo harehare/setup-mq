@@ -28,7 +28,7 @@
     "package": "npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "package:watch": "npm run package -- --watch",
     "test": "vitest --run",
-    "lint": "xo",
+    "lint": "oxlint src",
     "bundle": "npm run test && npm run package"
   },
   "license": "MIT",
@@ -38,26 +38,16 @@
     "@actions/tool-cache": "^4.0.0"
   },
   "devDependencies": {
-    "@eslint/compat": "^2.0.2",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/node": "^25.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.56.0",
-    "@typescript-eslint/parser": "^8.56.0",
-    "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-import-resolver-typescript": "^4.4.4",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jest": "^29.15.0",
-    "eslint-plugin-prettier": "^5.5.5",
     "make-coverage-badge": "^1.2.0",
+    "oxlint": "^1.0.0",
     "prettier": "^3.8.1",
-    "prettier-eslint": "^16.4.2",
     "rollup": "^4.57.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18",
-    "xo": "^1.2.3"
+    "vitest": "^4.0.18"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "*"
