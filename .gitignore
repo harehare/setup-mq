@@ -43,3 +43,4 @@ web_modules/
 .cache
 
 settings.local.json
+.DS_Store
