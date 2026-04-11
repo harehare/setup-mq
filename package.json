@@ -48,7 +48,7 @@
     "prettier": "^3.8.1",
     "rollup": "^4.60.1",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.4"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "*"
