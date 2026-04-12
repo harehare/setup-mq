@@ -61,6 +61,22 @@ vi.mock('@actions/tool-cache', () => ({
       return 'bin_bar_tool/mq-bar';
     }
 
+    if (url === 'latest_url/mq-lsp') {
+      return 'latest_tool/mq-lsp';
+    }
+
+    if (url === 'latest_url/mq-dbg') {
+      return 'latest_tool/mq-dbg';
+    }
+
+    if (url === 'latest_url/mq-test') {
+      return 'latest_tool/mq-test';
+    }
+
+    if (url === 'latest_url/mq-crawl') {
+      return 'latest_tool/mq-crawl';
+    }
+
     return '';
   }),
   extractTar: vi.fn().mockResolvedValue('/path/to/extracted/directory'),
@@ -81,6 +97,22 @@ vi.mock('@actions/github', () => ({
               {
                 browser_download_url: 'latest_url/mq',
                 name: 'mq-x86_64-unknown-linux-gnu',
+              },
+              {
+                browser_download_url: 'latest_url/mq-lsp',
+                name: 'mq-lsp-x86_64-unknown-linux-gnu',
+              },
+              {
+                browser_download_url: 'latest_url/mq-dbg',
+                name: 'mq-dbg-x86_64-unknown-linux-gnu',
+              },
+              {
+                browser_download_url: 'latest_url/mq-test',
+                name: 'mq-test-x86_64-unknown-linux-gnu',
+              },
+              {
+                browser_download_url: 'latest_url/mq-crawl',
+                name: 'mq-crawl-x86_64-unknown-linux-gnu',
               },
             ],
           },
@@ -127,6 +159,10 @@ vi.mock('@actions/github', () => ({
               {
                 browser_download_url: 'v0.1.0_url/mq',
                 name: 'mq-x86_64-unknown-linux-gnu',
+              },
+              {
+                browser_download_url: 'v0.1.0_url/mq-lsp',
+                name: 'mq-lsp-x86_64-unknown-linux-gnu',
               },
             ],
           },
@@ -310,6 +346,83 @@ describe('GitHub Action', () => {
     // Only mq download, no additional bin downloads
     expect(tc.downloadTool).toHaveBeenCalledTimes(1);
     expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq');
+  });
+
+  it('should install bundled tools from harehare/mq releases', async () => {
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'version') return '';
+      if (name === 'github-token') return 'fake-token';
+      if (name === 'bins') return 'lsp,dbg';
+      return '';
+    });
+
+    await run();
+
+    // Bundled tools should be fetched from mq repo (getLatestRelease called only for mq)
+    const octokit = vi.mocked(github.getOctokit).mock.results[0].value;
+    expect(octokit.rest.repos.getLatestRelease).toHaveBeenCalledWith(
+      expect.objectContaining({ repo: 'mq' }),
+    );
+    expect(octokit.rest.repos.getLatestRelease).not.toHaveBeenCalledWith(
+      expect.objectContaining({ repo: 'mq-lsp' }),
+    );
+    expect(octokit.rest.repos.getLatestRelease).not.toHaveBeenCalledWith(
+      expect.objectContaining({ repo: 'mq-dbg' }),
+    );
+
+    // Downloaded from mq release assets
+    expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-lsp');
+    expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-dbg');
+  });
+
+  it('should install bundled tools with specified version from harehare/mq', async () => {
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'version') return 'v0.1.0';
+      if (name === 'github-token') return 'fake-token';
+      if (name === 'bins') return 'lsp';
+      return '';
+    });
+
+    await run();
+
+    const octokit = vi.mocked(github.getOctokit).mock.results[0].value;
+    expect(octokit.rest.repos.getReleaseByTag).toHaveBeenCalledWith(
+      expect.objectContaining({ repo: 'mq', tag: 'v0.1.0' }),
+    );
+
+    expect(tc.downloadTool).toHaveBeenCalledWith('v0.1.0_url/mq-lsp');
+  });
+
+  it('should install all bundled tool types (lsp, dbg, test, crawl)', async () => {
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'version') return '';
+      if (name === 'github-token') return 'fake-token';
+      if (name === 'bins') return 'lsp,dbg,test,crawl';
+      return '';
+    });
+
+    await run();
+
+    expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-lsp');
+    expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-dbg');
+    expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-test');
+    expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-crawl');
+  });
+
+  it('should mix bundled tools and external repos in a single bins input', async () => {
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'version') return '';
+      if (name === 'github-token') return 'fake-token';
+      if (name === 'bins') return 'lsp,foo';
+      return '';
+    });
+
+    await run();
+
+    // lsp from mq repo
+    expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-lsp');
+    // foo from mq-foo repo
+    expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/mq-foo');
   });
 
   it('should warn when a bin release has no matching asset', async () => {
