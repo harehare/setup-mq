@@ -9,6 +9,9 @@ import * as tc from '@actions/tool-cache';
 const TOOL_NAME = 'mq';
 const OWNER = 'harehare';
 const REPO = 'mq';
+
+// Tools that are bundled in the main harehare/mq releases
+const MQ_BUNDLED_TOOLS = new Set(['lsp', 'dbg', 'test', 'crawl']);
 const MQ_BIN_DIR = path.join(os.homedir(), '.mq', 'bin');
 
 const PLATFORM_MAP = {
@@ -69,7 +72,7 @@ export async function run(): Promise<void> {
 
         await Promise.all(
           bins.map(async (bin) =>
-            setupAdditionalBin(token, platform, arch, bin),
+            setupAdditionalBin(token, platform, arch, bin, version),
           ),
         );
       }
@@ -138,14 +141,17 @@ async function setupAdditionalBin(
   platform: string,
   arch: string,
   bin: string,
+  version?: string,
 ): Promise<void> {
-  const repo = `mq-${bin}`;
-  const toolName = bin.startsWith('mq-') ? bin : `mq-${bin}`;
+  const isBundled = MQ_BUNDLED_TOOLS.has(bin);
+  const repo = isBundled ? REPO : `mq-${bin}`;
+  const toolName = isBundled ? `mq-${bin}` : bin.startsWith('mq-') ? bin : `mq-${bin}`;
   const release = await getRelease({
     token,
     repo,
     toolName,
     platform: `${platform}_${arch}` as Platform,
+    version: isBundled ? version : undefined,
   });
 
   if (!release.url || !release.version) {
