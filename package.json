@@ -46,7 +46,7 @@
     "make-coverage-badge": "^1.2.0",
     "oxlint": "^1.71.0",
     "prettier": "^3.8.4",
-    "rollup": "^4.62.0",
+    "rollup": "^4.62.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
   },
