@@ -19,11 +19,34 @@ const PLATFORM_MAP = {
   darwin_arm64: 'aarch64-apple-darwin',
   win32_x64: 'x86_64-pc-windows-msvc.exe',
   win32_arm64: 'aarch64-pc-windows-msvc.exe',
-  linux_arm64: 'aarch64-unknown-linux-gnu',
-  linux_x64: 'x86_64-unknown-linux-gnu',
+  linux_x64_gnu: 'x86_64-unknown-linux-gnu',
+  linux_x64_musl: 'x86_64-unknown-linux-musl',
+  linux_arm64_gnu: 'aarch64-unknown-linux-gnu',
+  linux_arm64_musl: 'aarch64-unknown-linux-musl',
 } as const;
 
 type Platform = keyof typeof PLATFORM_MAP;
+
+// Alpine is the de facto standard musl-based distro for CI/containers, and always ships this file.
+async function detectLinuxLibc(): Promise<'gnu' | 'musl'> {
+  try {
+    await fs.access('/etc/alpine-release');
+    return 'musl';
+  } catch {
+    return 'gnu';
+  }
+}
+
+async function getPlatformKey(
+  platform: 'darwin' | 'win32' | 'linux',
+  arch: 'x64' | 'arm64',
+): Promise<Platform> {
+  if (platform === 'linux') {
+    return `linux_${arch}_${await detectLinuxLibc()}` as Platform;
+  }
+
+  return `${platform}_${arch}` as Platform;
+}
 
 type Release = {
   version?: string;
@@ -55,9 +78,11 @@ export async function run(): Promise<void> {
     const version: string = core.getInput('version');
     const token = core.getInput('github-token');
     const binsInput: string = core.getInput('bins');
+    const platformKey = await getPlatformKey(platform, arch);
 
     // Setup main mq tool
-    await setupMq(token, platform, arch, version);
+    const mqResult = await setupMq(token, platformKey, arch, version);
+    let binResults: { name: string; version: string }[] = [];
 
     // Setup additional bins from mq-XXX repositories
     if (binsInput) {
@@ -70,13 +95,17 @@ export async function run(): Promise<void> {
         await fs.mkdir(MQ_BIN_DIR, { recursive: true });
         core.addPath(MQ_BIN_DIR);
 
-        await Promise.all(
+        const results = await Promise.all(
           bins.map(async (bin) =>
-            setupAdditionalBin(token, platform, arch, bin, version),
+            setupAdditionalBin(token, platformKey, bin, version),
           ),
         );
+
+        binResults = results.filter((r) => r !== undefined);
       }
     }
+
+    await writeSummary(platformKey, mqResult, binResults);
   } catch (error) {
     console.log('error', error);
     if (error instanceof Error) {
@@ -89,23 +118,22 @@ export async function run(): Promise<void> {
 
 async function setupMq(
   token: string,
-  platform: string,
+  platformKey: Platform,
   arch: string,
   version: string,
-): Promise<void> {
+): Promise<{ version: string; path: string }> {
   const release = await getRelease({
     token,
     repo: REPO,
     toolName: TOOL_NAME,
-    platform: `${platform}_${arch}` as Platform,
+    platform: platformKey,
     version,
   });
 
   if (!release.url || !release.version) {
-    core.info(
-      `Not Found ${TOOL_NAME} version ${version} for ${platform}-${arch}`,
+    throw new Error(
+      `Not Found ${TOOL_NAME} version ${version} for ${platformKey}`,
     );
-    return;
   }
 
   let toolPath = tc.find(TOOL_NAME, release.version, arch);
@@ -132,31 +160,36 @@ async function setupMq(
 
   core.addPath(toolPath);
   core.info(
-    `Setting up ${TOOL_NAME} version ${version} for ${platform}-${arch}`,
+    `Setting up ${TOOL_NAME} version ${release.version} for ${platformKey}`,
   );
+
+  return { version: release.version, path: toolPath };
 }
 
 async function setupAdditionalBin(
   token: string,
-  platform: string,
-  arch: string,
+  platformKey: Platform,
   bin: string,
   version?: string,
-): Promise<void> {
+): Promise<{ name: string; version: string } | undefined> {
   const isBundled = MQ_BUNDLED_TOOLS.has(bin);
   const repo = isBundled ? REPO : `mq-${bin}`;
-  const toolName = isBundled ? `mq-${bin}` : bin.startsWith('mq-') ? bin : `mq-${bin}`;
+  const toolName = isBundled
+    ? `mq-${bin}`
+    : bin.startsWith('mq-')
+      ? bin
+      : `mq-${bin}`;
   const release = await getRelease({
     token,
     repo,
     toolName,
-    platform: `${platform}_${arch}` as Platform,
+    platform: platformKey,
     version: isBundled ? version : undefined,
   });
 
   if (!release.url || !release.version) {
-    core.warning(`Not Found ${toolName} for ${platform}-${arch} in ${repo}`);
-    return;
+    core.warning(`Not Found ${toolName} for ${platformKey} in ${repo}`);
+    return undefined;
   }
 
   const downloadPath = await tc.downloadTool(release.url);
@@ -166,6 +199,33 @@ async function setupAdditionalBin(
   await fs.chmod(binPath, '755');
 
   core.info(`Setting up ${toolName} version ${release.version} from ${repo}`);
+
+  return { name: toolName, version: release.version };
+}
+
+async function writeSummary(
+  platformKey: Platform,
+  mqResult: { version: string; path: string },
+  binResults: { name: string; version: string }[],
+): Promise<void> {
+  try {
+    await core.summary
+      .addHeading('Setup mq', 2)
+      .addTable([
+        [
+          { data: 'Tool', header: true },
+          { data: 'Version', header: true },
+          { data: 'Platform', header: true },
+        ],
+        [TOOL_NAME, mqResult.version, platformKey],
+        ...binResults.map((bin) => [bin.name, bin.version, platformKey]),
+      ])
+      .write();
+  } catch (error) {
+    core.warning(
+      `Failed to write job summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
+  }
 }
 
 async function getRelease(options: GetReleaseOptions): Promise<Release> {
@@ -186,7 +246,9 @@ async function getRelease(options: GetReleaseOptions): Promise<Release> {
 
     const assetName = `${toolName}-${PLATFORM_MAP[platform]}`;
     core.info(`Looking for asset: ${assetName}`);
-    core.info(`Available assets: ${latestReleaseResponse.data.assets.map((a: any) => a.name).join(', ')}`);
+    core.info(
+      `Available assets: ${latestReleaseResponse.data.assets.map((a: any) => a.name).join(', ')}`,
+    );
 
     return {
       version: latestReleaseResponse.data.tag_name,
