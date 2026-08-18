@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { promises as fs } from 'node:fs';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import * as tc from '@actions/tool-cache';
@@ -17,6 +18,8 @@ vi.mock('node:fs', () => ({
     copyFile: vi.fn(),
     chmod: vi.fn(),
     mkdir: vi.fn(),
+    // Rejects by default, simulating a glibc-based (non-Alpine) runner.
+    access: vi.fn().mockRejectedValue(new Error('ENOENT')),
   },
 }));
 
@@ -33,6 +36,12 @@ vi.mock('@actions/core', () => {
     return '';
   });
 
+  const summary = {
+    addHeading: vi.fn().mockReturnThis(),
+    addTable: vi.fn().mockReturnThis(),
+    write: vi.fn().mockResolvedValue(undefined),
+  };
+
   return {
     getInput,
     info: vi.fn(),
@@ -40,6 +49,7 @@ vi.mock('@actions/core', () => {
     warning: vi.fn(),
     setFailed: vi.fn(),
     addPath: vi.fn(),
+    summary,
   };
 });
 
@@ -75,6 +85,10 @@ vi.mock('@actions/tool-cache', () => ({
 
     if (url === 'latest_url/mq-crawl') {
       return 'latest_tool/mq-crawl';
+    }
+
+    if (url === 'latest_url/mq-musl') {
+      return 'latest_tool/mq-musl';
     }
 
     return '';
@@ -113,6 +127,10 @@ vi.mock('@actions/github', () => ({
               {
                 browser_download_url: 'latest_url/mq-crawl',
                 name: 'mq-crawl-x86_64-unknown-linux-gnu',
+              },
+              {
+                browser_download_url: 'latest_url/mq-musl',
+                name: 'mq-x86_64-unknown-linux-musl',
               },
             ],
           },
@@ -186,6 +204,11 @@ vi.mock('@actions/github', () => ({
 describe('GitHub Action', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // afterEach's resetAllMocks() wipes the module-mock default, so restore it here.
+    vi.mocked(fs.access).mockRejectedValue(new Error('ENOENT'));
+    vi.mocked(core.summary.addHeading).mockReturnThis();
+    vi.mocked(core.summary.addTable).mockReturnThis();
+    vi.mocked(core.summary.write).mockResolvedValue(undefined as any);
   });
 
   afterEach(() => {
@@ -267,12 +290,8 @@ describe('GitHub Action', () => {
     expect(tc.downloadTool).toHaveBeenCalledWith('bin_bar_url/mq-bar');
 
     // Verify info messages for additional bins
-    expect(core.info).toHaveBeenCalledWith(
-      expect.stringContaining('foo'),
-    );
-    expect(core.info).toHaveBeenCalledWith(
-      expect.stringContaining('bar'),
-    );
+    expect(core.info).toHaveBeenCalledWith(expect.stringContaining('foo'));
+    expect(core.info).toHaveBeenCalledWith(expect.stringContaining('bar'));
   });
 
   it('should handle bins with whitespace correctly', async () => {
@@ -319,9 +338,7 @@ describe('GitHub Action', () => {
     await run();
 
     expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/mq-foo');
-    expect(core.info).toHaveBeenCalledWith(
-      expect.stringContaining('foo'),
-    );
+    expect(core.info).toHaveBeenCalledWith(expect.stringContaining('foo'));
   });
 
   it('should not setup bins when bins input is empty', async () => {
@@ -423,6 +440,92 @@ describe('GitHub Action', () => {
     expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-lsp');
     // foo from mq-foo repo
     expect(tc.downloadTool).toHaveBeenCalledWith('bin_foo_url/mq-foo');
+  });
+
+  it('should install the musl asset on an Alpine-based runner', async () => {
+    vi.mocked(fs.access).mockImplementationOnce(async (target) => {
+      if (target === '/etc/alpine-release') {
+        return undefined;
+      }
+      throw new Error('ENOENT');
+    });
+
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'version') {
+        return '';
+      }
+
+      if (name === 'github-token') {
+        return 'fake-token';
+      }
+
+      return '';
+    });
+
+    await run();
+
+    expect(tc.downloadTool).toHaveBeenCalledWith('latest_url/mq-musl');
+    expect(core.addPath).toHaveBeenCalledWith('latest_tool');
+  });
+
+  it('should write a job summary after a successful setup', async () => {
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'version') {
+        return 'v0.1.0';
+      }
+
+      if (name === 'github-token') {
+        return 'fake-token';
+      }
+
+      return '';
+    });
+
+    await run();
+
+    expect(core.summary.addHeading).toHaveBeenCalledWith('Setup mq', 2);
+    expect(core.summary.addTable).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.arrayContaining(['mq', 'v0.1.0', 'linux_x64_gnu']),
+      ]),
+    );
+    expect(core.summary.write).toHaveBeenCalled();
+  });
+
+  it('should fail when the mq release has no matching asset for the platform', async () => {
+    const octokit = vi.mocked(github.getOctokit);
+    octokit.mockReturnValue({
+      rest: {
+        repos: {
+          getLatestRelease: vi.fn(async () => ({
+            data: {
+              tag_name: 'v1.0.0',
+              assets: [],
+            },
+          })),
+          getReleaseByTag: vi.fn(),
+        },
+      },
+    } as any);
+
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'version') {
+        return '';
+      }
+
+      if (name === 'github-token') {
+        return 'fake-token';
+      }
+
+      return '';
+    });
+
+    await run();
+
+    expect(core.setFailed).toHaveBeenCalledWith(
+      expect.stringContaining('Not Found mq'),
+    );
+    expect(core.addPath).not.toHaveBeenCalled();
   });
 
   it('should warn when a bin release has no matching asset', async () => {

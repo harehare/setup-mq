@@ -1,4 +1,4 @@
-import process$1 from'node:process';import*as os$1 from'node:os';import*as path$1 from'node:path';import {promises as promises$1}from'node:fs';import*as os from'os';import os__default,{EOL}from'os';import*as crypto from'crypto';import*as fs from'fs';import {promises,existsSync,readFileSync}from'fs';import*as path from'path';import*as http from'http';import http__default from'http';import*as https from'https';import https__default from'https';import'net';import require$$1 from'tls';import events$1 from'events';import {ok}from'assert';import*as require$$6 from'util';import require$$6__default from'util';import require$$0$1 from'node:assert';import require$$0$3 from'node:net';import require$$2 from'node:http';import require$$0$2 from'node:stream';import require$$0 from'node:buffer';import require$$0$4 from'node:util';import require$$7 from'node:querystring';import require$$8 from'node:events';import require$$0$5 from'node:diagnostics_channel';import require$$5 from'node:tls';import require$$1$2 from'node:zlib';import require$$5$1 from'node:perf_hooks';import require$$8$1 from'node:util/types';import require$$1$1 from'node:worker_threads';import require$$1$3 from'node:url';import require$$5$2 from'node:async_hooks';import require$$1$4 from'node:console';import require$$1$5 from'node:dns';import require$$5$3 from'string_decoder';import'child_process';import'timers';import*as stream from'stream';// We use any as a valid input type
+import process$1 from'node:process';import*as os$1 from'node:os';import*as path$1 from'node:path';import {promises as promises$1}from'node:fs';import*as os from'os';import os__default,{EOL}from'os';import*as crypto from'crypto';import*as fs from'fs';import {promises,constants as constants$6,existsSync,readFileSync}from'fs';import*as path from'path';import*as http from'http';import http__default from'http';import*as https from'https';import https__default from'https';import'net';import require$$1 from'tls';import events$1 from'events';import {ok}from'assert';import*as require$$6 from'util';import require$$6__default from'util';import require$$0$1 from'node:assert';import require$$0$3 from'node:net';import require$$2 from'node:http';import require$$0$2 from'node:stream';import require$$0 from'node:buffer';import require$$0$4 from'node:util';import require$$7 from'node:querystring';import require$$8 from'node:events';import require$$0$5 from'node:diagnostics_channel';import require$$5 from'node:tls';import require$$1$2 from'node:zlib';import require$$5$1 from'node:perf_hooks';import require$$8$1 from'node:util/types';import require$$1$1 from'node:worker_threads';import require$$1$3 from'node:url';import require$$5$2 from'node:async_hooks';import require$$1$4 from'node:console';import require$$1$5 from'node:dns';import require$$5$3 from'string_decoder';import'child_process';import'timers';import*as stream from'stream';// We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Sanitizes an input into a string so it can be passed into issueCommand safely
@@ -27582,7 +27582,7 @@ var MediaTypes$1;
         function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
-};(undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+};var __awaiter$6 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -27591,7 +27591,269 @@ var MediaTypes$1;
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-const { access, appendFile, writeFile } = promises;var __awaiter$5 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+const { access, appendFile, writeFile } = promises;
+const SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
+class Summary {
+    constructor() {
+        this._buffer = '';
+    }
+    /**
+     * Finds the summary file path from the environment, rejects if env var is not found or file does not exist
+     * Also checks r/w permissions.
+     *
+     * @returns step summary file path
+     */
+    filePath() {
+        return __awaiter$6(this, void 0, void 0, function* () {
+            if (this._filePath) {
+                return this._filePath;
+            }
+            const pathFromEnv = process.env[SUMMARY_ENV_VAR];
+            if (!pathFromEnv) {
+                throw new Error(`Unable to find environment variable for $${SUMMARY_ENV_VAR}. Check if your runtime environment supports job summaries.`);
+            }
+            try {
+                yield access(pathFromEnv, constants$6.R_OK | constants$6.W_OK);
+            }
+            catch (_a) {
+                throw new Error(`Unable to access summary file: '${pathFromEnv}'. Check if the file has correct read/write permissions.`);
+            }
+            this._filePath = pathFromEnv;
+            return this._filePath;
+        });
+    }
+    /**
+     * Wraps content in an HTML tag, adding any HTML attributes
+     *
+     * @param {string} tag HTML tag to wrap
+     * @param {string | null} content content within the tag
+     * @param {[attribute: string]: string} attrs key-value list of HTML attributes to add
+     *
+     * @returns {string} content wrapped in HTML element
+     */
+    wrap(tag, content, attrs = {}) {
+        const htmlAttrs = Object.entries(attrs)
+            .map(([key, value]) => ` ${key}="${value}"`)
+            .join('');
+        if (!content) {
+            return `<${tag}${htmlAttrs}>`;
+        }
+        return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+    }
+    /**
+     * Writes text in the buffer to the summary buffer file and empties buffer. Will append by default.
+     *
+     * @param {SummaryWriteOptions} [options] (optional) options for write operation
+     *
+     * @returns {Promise<Summary>} summary instance
+     */
+    write(options) {
+        return __awaiter$6(this, void 0, void 0, function* () {
+            const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
+            const filePath = yield this.filePath();
+            const writeFunc = overwrite ? writeFile : appendFile;
+            yield writeFunc(filePath, this._buffer, { encoding: 'utf8' });
+            return this.emptyBuffer();
+        });
+    }
+    /**
+     * Clears the summary buffer and wipes the summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    clear() {
+        return __awaiter$6(this, void 0, void 0, function* () {
+            return this.emptyBuffer().write({ overwrite: true });
+        });
+    }
+    /**
+     * Returns the current summary buffer as a string
+     *
+     * @returns {string} string of summary buffer
+     */
+    stringify() {
+        return this._buffer;
+    }
+    /**
+     * If the summary buffer is empty
+     *
+     * @returns {boolen} true if the buffer is empty
+     */
+    isEmptyBuffer() {
+        return this._buffer.length === 0;
+    }
+    /**
+     * Resets the summary buffer without writing to summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    emptyBuffer() {
+        this._buffer = '';
+        return this;
+    }
+    /**
+     * Adds raw text to the summary buffer
+     *
+     * @param {string} text content to add
+     * @param {boolean} [addEOL=false] (optional) append an EOL to the raw text (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addRaw(text, addEOL = false) {
+        this._buffer += text;
+        return addEOL ? this.addEOL() : this;
+    }
+    /**
+     * Adds the operating system-specific end-of-line marker to the buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addEOL() {
+        return this.addRaw(EOL);
+    }
+    /**
+     * Adds an HTML codeblock to the summary buffer
+     *
+     * @param {string} code content to render within fenced code block
+     * @param {string} lang (optional) language to syntax highlight code
+     *
+     * @returns {Summary} summary instance
+     */
+    addCodeBlock(code, lang) {
+        const attrs = Object.assign({}, (lang && { lang }));
+        const element = this.wrap('pre', this.wrap('code', code), attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML list to the summary buffer
+     *
+     * @param {string[]} items list of items to render
+     * @param {boolean} [ordered=false] (optional) if the rendered list should be ordered or not (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addList(items, ordered = false) {
+        const tag = ordered ? 'ol' : 'ul';
+        const listItems = items.map(item => this.wrap('li', item)).join('');
+        const element = this.wrap(tag, listItems);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML table to the summary buffer
+     *
+     * @param {SummaryTableCell[]} rows table rows
+     *
+     * @returns {Summary} summary instance
+     */
+    addTable(rows) {
+        const tableBody = rows
+            .map(row => {
+            const cells = row
+                .map(cell => {
+                if (typeof cell === 'string') {
+                    return this.wrap('td', cell);
+                }
+                const { header, data, colspan, rowspan } = cell;
+                const tag = header ? 'th' : 'td';
+                const attrs = Object.assign(Object.assign({}, (colspan && { colspan })), (rowspan && { rowspan }));
+                return this.wrap(tag, data, attrs);
+            })
+                .join('');
+            return this.wrap('tr', cells);
+        })
+            .join('');
+        const element = this.wrap('table', tableBody);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds a collapsable HTML details element to the summary buffer
+     *
+     * @param {string} label text for the closed state
+     * @param {string} content collapsable content
+     *
+     * @returns {Summary} summary instance
+     */
+    addDetails(label, content) {
+        const element = this.wrap('details', this.wrap('summary', label) + content);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML image tag to the summary buffer
+     *
+     * @param {string} src path to the image you to embed
+     * @param {string} alt text description of the image
+     * @param {SummaryImageOptions} options (optional) addition image attributes
+     *
+     * @returns {Summary} summary instance
+     */
+    addImage(src, alt, options) {
+        const { width, height } = options || {};
+        const attrs = Object.assign(Object.assign({}, (width && { width })), (height && { height }));
+        const element = this.wrap('img', null, Object.assign({ src, alt }, attrs));
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML section heading element
+     *
+     * @param {string} text heading text
+     * @param {number | string} [level=1] (optional) the heading level, default: 1
+     *
+     * @returns {Summary} summary instance
+     */
+    addHeading(text, level) {
+        const tag = `h${level}`;
+        const allowedTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)
+            ? tag
+            : 'h1';
+        const element = this.wrap(allowedTag, text);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML thematic break (<hr>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addSeparator() {
+        const element = this.wrap('hr', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML line break (<br>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addBreak() {
+        const element = this.wrap('br', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML blockquote to the summary buffer
+     *
+     * @param {string} text quote text
+     * @param {string} cite (optional) citation url
+     *
+     * @returns {Summary} summary instance
+     */
+    addQuote(text, cite) {
+        const attrs = Object.assign({}, (cite && { cite }));
+        const element = this.wrap('blockquote', text, attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML anchor tag to the summary buffer
+     *
+     * @param {string} text link text/content
+     * @param {string} href hyperlink
+     *
+     * @returns {Summary} summary instance
+     */
+    addLink(text, href) {
+        const element = this.wrap('a', text, { href });
+        return this.addRaw(element).addEOL();
+    }
+}
+const _summary = new Summary();
+const summary = _summary;var __awaiter$5 = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -36322,9 +36584,27 @@ const PLATFORM_MAP = {
     darwin_arm64: 'aarch64-apple-darwin',
     win32_x64: 'x86_64-pc-windows-msvc.exe',
     win32_arm64: 'aarch64-pc-windows-msvc.exe',
-    linux_arm64: 'aarch64-unknown-linux-gnu',
-    linux_x64: 'x86_64-unknown-linux-gnu',
+    linux_x64_gnu: 'x86_64-unknown-linux-gnu',
+    linux_x64_musl: 'x86_64-unknown-linux-musl',
+    linux_arm64_gnu: 'aarch64-unknown-linux-gnu',
+    linux_arm64_musl: 'aarch64-unknown-linux-musl',
 };
+// Alpine is the de facto standard musl-based distro for CI/containers, and always ships this file.
+async function detectLinuxLibc() {
+    try {
+        await promises$1.access('/etc/alpine-release');
+        return 'musl';
+    }
+    catch {
+        return 'gnu';
+    }
+}
+async function getPlatformKey(platform, arch) {
+    if (platform === 'linux') {
+        return `linux_${arch}_${await detectLinuxLibc()}`;
+    }
+    return `${platform}_${arch}`;
+}
 async function run() {
     try {
         const { arch, platform } = process$1;
@@ -36339,8 +36619,10 @@ async function run() {
         const version = getInput('version');
         const token = getInput('github-token');
         const binsInput = getInput('bins');
+        const platformKey = await getPlatformKey(platform, arch);
         // Setup main mq tool
-        await setupMq(token, platform, arch, version);
+        const mqResult = await setupMq(token, platformKey, arch, version);
+        let binResults = [];
         // Setup additional bins from mq-XXX repositories
         if (binsInput) {
             const bins = binsInput
@@ -36350,9 +36632,11 @@ async function run() {
             if (bins.length > 0) {
                 await promises$1.mkdir(MQ_BIN_DIR, { recursive: true });
                 addPath(MQ_BIN_DIR);
-                await Promise.all(bins.map(async (bin) => setupAdditionalBin(token, platform, arch, bin, version)));
+                const results = await Promise.all(bins.map(async (bin) => setupAdditionalBin(token, platformKey, bin, version)));
+                binResults = results.filter((r) => r !== undefined);
             }
         }
+        await writeSummary(platformKey, mqResult, binResults);
     }
     catch (error) {
         console.log('error', error);
@@ -36364,17 +36648,16 @@ async function run() {
         }
     }
 }
-async function setupMq(token, platform, arch, version) {
+async function setupMq(token, platformKey, arch, version) {
     const release = await getRelease({
         token,
         repo: REPO,
         toolName: TOOL_NAME,
-        platform: `${platform}_${arch}`,
+        platform: platformKey,
         version,
     });
     if (!release.url || !release.version) {
-        info(`Not Found ${TOOL_NAME} version ${version} for ${platform}-${arch}`);
-        return;
+        throw new Error(`Not Found ${TOOL_NAME} version ${version} for ${platformKey}`);
     }
     let toolPath = find(TOOL_NAME, release.version, arch);
     const isAct = process$1.env.ACT === 'true';
@@ -36391,28 +36674,53 @@ async function setupMq(token, platform, arch, version) {
         }
     }
     addPath(toolPath);
-    info(`Setting up ${TOOL_NAME} version ${version} for ${platform}-${arch}`);
+    info(`Setting up ${TOOL_NAME} version ${release.version} for ${platformKey}`);
+    return { version: release.version, path: toolPath };
 }
-async function setupAdditionalBin(token, platform, arch, bin, version) {
+async function setupAdditionalBin(token, platformKey, bin, version) {
     const isBundled = MQ_BUNDLED_TOOLS.has(bin);
     const repo = isBundled ? REPO : `mq-${bin}`;
-    const toolName = isBundled ? `mq-${bin}` : bin.startsWith('mq-') ? bin : `mq-${bin}`;
+    const toolName = isBundled
+        ? `mq-${bin}`
+        : bin.startsWith('mq-')
+            ? bin
+            : `mq-${bin}`;
     const release = await getRelease({
         token,
         repo,
         toolName,
-        platform: `${platform}_${arch}`,
+        platform: platformKey,
         version: isBundled ? version : undefined,
     });
     if (!release.url || !release.version) {
-        warning(`Not Found ${toolName} for ${platform}-${arch} in ${repo}`);
-        return;
+        warning(`Not Found ${toolName} for ${platformKey} in ${repo}`);
+        return undefined;
     }
     const downloadPath = await downloadTool(release.url);
     const binPath = path$1.join(MQ_BIN_DIR, toolName);
     await promises$1.copyFile(downloadPath, binPath);
     await promises$1.chmod(binPath, '755');
     info(`Setting up ${toolName} version ${release.version} from ${repo}`);
+    return { name: toolName, version: release.version };
+}
+async function writeSummary(platformKey, mqResult, binResults) {
+    try {
+        await summary
+            .addHeading('Setup mq', 2)
+            .addTable([
+            [
+                { data: 'Tool', header: true },
+                { data: 'Version', header: true },
+                { data: 'Platform', header: true },
+            ],
+            [TOOL_NAME, mqResult.version, platformKey],
+            ...binResults.map((bin) => [bin.name, bin.version, platformKey]),
+        ])
+            .write();
+    }
+    catch (error) {
+        warning(`Failed to write job summary: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
 }
 async function getRelease(options) {
     const { token, repo, toolName, platform, version } = options;
