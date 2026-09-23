@@ -45,7 +45,7 @@
     "@types/node": "^26.6.1",
     "make-coverage-badge": "^1.2.0",
     "oxlint": "^1.83.0",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.7",
     "rollup": "^4.63.3",
     "typescript": "^6.0.3",
     "vitest": "^5.0.1"
