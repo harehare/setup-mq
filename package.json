@@ -41,7 +41,7 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
-    "@rollup/plugin-typescript": "^12.3.0",
+    "@rollup/plugin-typescript": "^12.3.1",
     "@types/node": "^26.6.5",
     "make-coverage-badge": "^1.2.0",
     "oxlint": "^1.89.0",
