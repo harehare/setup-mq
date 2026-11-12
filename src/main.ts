@@ -11,7 +11,15 @@ const OWNER = 'harehare';
 const REPO = 'mq';
 
 // Tools that are bundled in the main harehare/mq releases
-const MQ_BUNDLED_TOOLS = new Set(['lsp', 'dbg', 'test', 'crawl']);
+const MQ_BUNDLED_TOOLS = new Set([
+  'lsp',
+  'dbg',
+  'test',
+  'crawl',
+  'fmt',
+  'check',
+  'lint',
+]);
 const MQ_BIN_DIR = path.join(os.homedir(), '.mq', 'bin');
 
 const PLATFORM_MAP = {
