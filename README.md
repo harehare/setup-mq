@@ -28,7 +28,7 @@ steps:
 
 ### With additional binaries
 
-mq ships companion tools (`lsp`, `dbg`, `test`, `crawl`) as part of its own releases, and other tools
+mq ships companion tools (`lsp`, `dbg`, `test`, `crawl`, `fmt`, `check`, `lint`) as part of its own releases, and other tools
 are distributed from separate `mq-XXX` repositories (e.g. `mq-foo`). Use the `bins` option to install
 either kind by name.
 

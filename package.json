@@ -19,18 +19,19 @@
   "exports": {
     ".": "./dist/index.js"
   },
+  "packageManager": "pnpm@12.15.0",
   "engines": {
     "node": ">=24"
   },
   "scripts": {
-    "format:write": "npx prettier --write .",
-    "format:check": "npx prettier --check .",
-    "package": "npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
-    "package:watch": "npm run package -- --watch",
+    "format:write": "pnpm exec prettier --write .",
+    "format:check": "pnpm exec prettier --check .",
+    "package": "rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
+    "package:watch": "pnpm run package --watch",
     "test": "vitest --run",
     "lint": "oxlint src",
-    "bundle": "npm run test && npm run package",
-    "preversion": "npm run bundle"
+    "bundle": "pnpm test && pnpm run package",
+    "preversion": "pnpm run bundle"
   },
   "license": "MIT",
   "dependencies": {
@@ -47,6 +48,7 @@
     "oxlint": "^1.91.0",
     "prettier": "^3.9.10",
     "rollup": "^4.67.5",
+    "tslib": "^2.9.1",
     "typescript": "^6.0.3",
     "vitest": "^5.1.0"
   },
